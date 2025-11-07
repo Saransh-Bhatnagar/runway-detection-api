@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+
+# Conda
+.conda/
+
+# Model files
+*.pth
+*.joblib
+
+# VS Code
+.vscode/
