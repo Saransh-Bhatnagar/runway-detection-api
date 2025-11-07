@@ -20,7 +20,7 @@ This service accepts an image and returns a new JPEG with the detected runway bo
 ## ⚙️ How to Run It Locally
 
 ### 1. Download the Model
-This repo does **not** include the `.pth` file. Please download the model (`checkpoint_epoch_10.pth`) from the original project's Google Drive and place it in this folder.
+This repo does **not** include the `.pth` file. Please download the model (`final_model.pth`) from the original project's Google Drive and place it in this folder.
 
 ### 2. Build the Docker Image
 With Docker Desktop running, build the image:
