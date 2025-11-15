@@ -1,0 +1,19 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches: [ main ]  
+  pull_request:
+    branches: [ main ]  
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Check out code
+        uses: actions/checkout@v4
+
+      - name: 2. Build the Docker image
+        run: |
+          docker build -t runway-detection-test .
