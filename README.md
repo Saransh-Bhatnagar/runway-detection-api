@@ -5,7 +5,7 @@
 ## 🔍 Overview
 A production-grade computer vision pipeline designed to detect airport runways in aerial imagery. This project bridges the "Sim2Real" gap by training on 14,000+ synthetic images and deploying the inference engine as a serverless microservice.
 
-**🔴 Live API Docs:** [[https://YOUR_API_ID.execute-api.eu-west-1.amazonaws.com/default/docs](https://onq18p4b8l.execute-api.eu-west-1.amazonaws.com/default/docs#/default/predict_image_predict_image_post)]([https://YOUR_API_ID.execute-api.eu-west-1.amazonaws.com/default/docs](https://onq18p4b8l.execute-api.eu-west-1.amazonaws.com/default/docs#/default/predict_image_predict_image_post))
+**🔴 Live API Docs:** [https://onq18p4b8l.execute-api.eu-west-1.amazonaws.com/default/docs#/default/predict_image_predict_image_post](https://onq18p4b8l.execute-api.eu-west-1.amazonaws.com/default/docs#/default/predict_image_predict_image_post)
 *(Note: Please allow 5-10 seconds for Cold Start latency on first request, try refreshing if failed.)*
 
 ## 🏗 System Architecture
