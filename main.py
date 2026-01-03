@@ -14,10 +14,8 @@ import os
 
 # --- S3 CONFIGURATION ---
 s3 = boto3.client('s3')
-# REPLACE THIS with your exact bucket name if it is different
-BUCKET_NAME = 'saransh-runway-models' 
+BUCKET_NAME = 'runway-model-storage' 
 MODEL_KEY = 'checkpoint_epoch_10.pth'
-# Lambda only allows writing to the /tmp folder
 LOCAL_MODEL_PATH = '/tmp/checkpoint_epoch_10.pth' 
 
 # --- MODEL SETUP ---
@@ -33,9 +31,7 @@ in_features = model.roi_heads.box_predictor.cls_score.in_features
 # Replace the pre-trained head with a new one
 model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
-# --- SMART MODEL LOADER (S3) ---
 def load_model_from_s3():
-    # Check if we already have the model (Warm Start Optimization)
     if not os.path.exists(LOCAL_MODEL_PATH):
         print("Model not found locally. Downloading from S3...")
         try:
