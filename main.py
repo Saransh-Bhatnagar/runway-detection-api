@@ -30,8 +30,8 @@ model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 print("Model loaded successfully.")
 
+app = FastAPI(title="Saransh's Advanced Vision API", root_path="/default")
 
-app = FastAPI(title="Computer Vision API")
 
 @app.post("/predict_image")
 async def predict_image(image_file: UploadFile = File(...)):

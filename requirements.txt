@@ -1,7 +1,8 @@
 fastapi
 uvicorn[standard]
-torch
-torchvision
-Pillow
-numpy
 python-multipart
+Pillow
+numpy<2
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==2.1.0+cpu
+torchvision==0.16.0+cpu
