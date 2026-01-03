@@ -2,36 +2,63 @@ import torch
 import torchvision
 from torchvision import transforms
 from fastapi import FastAPI, File, UploadFile
-from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2, FasterRCNN_ResNet50_FPN_V2_Weights
+from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2
 from torchvision.models.resnet import ResNet50_Weights
 from PIL import Image, ImageDraw
 import io
 import numpy as np
 from fastapi.responses import StreamingResponse
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+import boto3
+import os
 
+# --- S3 CONFIGURATION ---
+s3 = boto3.client('s3')
+# REPLACE THIS with your exact bucket name if it is different
+BUCKET_NAME = 'saransh-runway-models' 
+MODEL_KEY = 'checkpoint_epoch_10.pth'
+# Lambda only allows writing to the /tmp folder
+LOCAL_MODEL_PATH = '/tmp/checkpoint_epoch_10.pth' 
+
+# --- MODEL SETUP ---
 num_classes = 2  
 
 model = fasterrcnn_resnet50_fpn_v2(weights=None, 
-                                     weights_backbone=ResNet50_Weights.DEFAULT,  # <-- THIS IS THE FIX
-                                     num_classes=num_classes)
+                                   weights_backbone=ResNet50_Weights.DEFAULT,
+                                   num_classes=num_classes)
 
 # Get the number of "in features" for the classifier
-in_features = model.roi_heads.box_predictor.cls_score.in_features # type: ignore
+in_features = model.roi_heads.box_predictor.cls_score.in_features 
 
-
+# Replace the pre-trained head with a new one
 model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
+# --- SMART MODEL LOADER (S3) ---
+def load_model_from_s3():
+    # Check if we already have the model (Warm Start Optimization)
+    if not os.path.exists(LOCAL_MODEL_PATH):
+        print("Model not found locally. Downloading from S3...")
+        try:
+            s3.download_file(BUCKET_NAME, MODEL_KEY, LOCAL_MODEL_PATH)
+            print("Download complete.")
+        except Exception as e:
+            print(f"CRITICAL ERROR: Could not download model from S3: {e}")
+            raise e
+    else:
+        print("Model found locally (Warm Start). Skipping download.")
 
-checkpoint = torch.load("checkpoint_epoch_10.pth", map_location=torch.device('cpu'))
+    return torch.load(LOCAL_MODEL_PATH, map_location=torch.device('cpu'))
 
+# Execute the loader
+checkpoint = load_model_from_s3()
+
+# Load weights into the model architecture
 model.load_state_dict(checkpoint['model_state_dict'])
-
 model.eval()
 print("Model loaded successfully.")
 
+# --- API SETUP ---
 app = FastAPI(title="Saransh's Advanced Vision API", root_path="/default")
-
 
 @app.post("/predict_image")
 async def predict_image(image_file: UploadFile = File(...)):
@@ -52,7 +79,6 @@ async def predict_image(image_file: UploadFile = File(...)):
     with torch.no_grad():
         prediction = model(input_tensor)[0]
     
-
     CONF_THRESHOLD = 0.8
     
     draw = ImageDraw.Draw(image)
@@ -77,7 +103,6 @@ async def predict_image(image_file: UploadFile = File(...)):
             
             draw.rectangle([x1, y1, x2, y2], outline="red", width=5)
 
-    
     buffer = io.BytesIO()
     
     image.save(buffer, format="JPEG")
