@@ -33,13 +33,17 @@ jobs:
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
+    - name: Wait for any in-progress Lambda update
+      run: |
+        aws lambda wait function-updated --function-name runway-inference
+
     - name: Update Lambda Function
       run: |
         aws lambda update-function-code \
           --function-name runway-inference \
           --image-uri ${{ secrets.ECR_REPOSITORY_URI }}:latest
 
-    - name: Wait for Lambda to finish updating
+    - name: Wait for Lambda update to complete
       run: |
         aws lambda wait function-updated --function-name runway-inference
 
