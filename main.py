@@ -8,6 +8,8 @@ from PIL import Image, ImageDraw
 import io
 import numpy as np
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 import boto3
 import os
@@ -55,6 +57,12 @@ print("Model loaded successfully.")
 
 # --- API SETUP ---
 app = FastAPI(title="Saransh's Advanced Vision API", root_path="/default")
+
+@app.get("/")
+async def serve_ui():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "static", "index.html"))
+
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 
 @app.post("/predict_image")
 async def predict_image(image_file: UploadFile = File(...)):

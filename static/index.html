@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision API - Object Detection</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e8;
+            min-height: 100vh;
+        }
+
+        /* --- Header --- */
+        header {
+            text-align: center;
+            padding: 3rem 1rem 1.5rem;
+        }
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6ee7b7, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+        header p {
+            margin-top: 0.5rem;
+            color: #888;
+            font-size: 0.95rem;
+        }
+
+        /* --- Layout --- */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 1.5rem 4rem;
+        }
+
+        /* --- Drop Zone --- */
+        .drop-zone {
+            position: relative;
+            border: 2px dashed #2a2a3a;
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            background: #111119;
+        }
+        .drop-zone:hover,
+        .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background: #13131f;
+        }
+        .drop-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .drop-zone .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .drop-zone .label {
+            font-size: 1.05rem;
+            color: #aaa;
+        }
+        .drop-zone .label strong {
+            color: #3b82f6;
+        }
+        .drop-zone .hint {
+            margin-top: 0.4rem;
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+        /* --- Preview --- */
+        .preview-section {
+            display: none;
+            margin-top: 2rem;
+        }
+        .preview-section.visible { display: block; }
+
+        .preview-card {
+            background: #111119;
+            border: 1px solid #1e1e2e;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .preview-card .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #1e1e2e;
+        }
+        .card-header .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        .card-header .file-info .name {
+            color: #e0e0e8;
+            font-weight: 500;
+        }
+        .card-header .remove-btn {
+            background: none;
+            border: 1px solid #2a2a3a;
+            color: #888;
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .card-header .remove-btn:hover {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+        .preview-card .image-wrap {
+            display: flex;
+            justify-content: center;
+            padding: 1rem;
+            background: #0d0d14;
+        }
+        .preview-card .image-wrap img {
+            max-width: 100%;
+            max-height: 450px;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+
+        /* --- Button --- */
+        .actions {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+        .detect-btn {
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.85rem 2.5rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .detect-btn:hover { opacity: 0.9; }
+        .detect-btn:active { transform: scale(0.98); }
+        .detect-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* --- Spinner --- */
+        .spinner {
+            display: none;
+            margin: 2rem auto;
+            text-align: center;
+        }
+        .spinner.visible { display: block; }
+        .spinner .dots {
+            display: inline-flex;
+            gap: 6px;
+        }
+        .spinner .dots span {
+            width: 10px;
+            height: 10px;
+            background: #3b82f6;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .spinner .dots span:nth-child(1) { animation-delay: -0.32s; }
+        .spinner .dots span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        .spinner p {
+            margin-top: 0.75rem;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        /* --- Result --- */
+        .result-section {
+            display: none;
+            margin-top: 2rem;
+        }
+        .result-section.visible { display: block; }
+
+        .result-section h2 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #6ee7b7;
+        }
+        .result-card {
+            background: #111119;
+            border: 1px solid #1e1e2e;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .result-card .image-wrap {
+            display: flex;
+            justify-content: center;
+            padding: 1rem;
+            background: #0d0d14;
+        }
+        .result-card .image-wrap img {
+            max-width: 100%;
+            max-height: 550px;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+        .result-card .result-footer {
+            display: flex;
+            justify-content: flex-end;
+            padding: 0.75rem 1.25rem;
+            border-top: 1px solid #1e1e2e;
+        }
+        .download-btn {
+            background: #1a1a2a;
+            border: 1px solid #2a2a3a;
+            color: #aaa;
+            padding: 0.45rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .download-btn:hover {
+            border-color: #6ee7b7;
+            color: #6ee7b7;
+        }
+
+        /* --- Error --- */
+        .error-msg {
+            display: none;
+            margin-top: 1.5rem;
+            padding: 1rem 1.25rem;
+            background: #1a0a0a;
+            border: 1px solid #3b1111;
+            border-radius: 12px;
+            color: #f87171;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .error-msg.visible { display: block; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Vision API</h1>
+        <p>Upload an image to detect objects using Faster R-CNN</p>
+    </header>
+
+    <div class="container">
+        <!-- Drop Zone -->
+        <div class="drop-zone" id="dropZone">
+            <input type="file" id="fileInput" accept="image/*">
+            <div class="icon">&#128444;</div>
+            <div class="label">Drag & drop an image or <strong>browse</strong></div>
+            <div class="hint">JPG, PNG, WEBP supported</div>
+        </div>
+
+        <!-- Preview -->
+        <div class="preview-section" id="previewSection">
+            <div class="preview-card">
+                <div class="card-header">
+                    <div class="file-info">
+                        <span class="name" id="fileName"></span>
+                        <span id="fileSize"></span>
+                    </div>
+                    <button class="remove-btn" id="removeBtn">Remove</button>
+                </div>
+                <div class="image-wrap">
+                    <img id="previewImg" alt="Preview">
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="detect-btn" id="detectBtn">Run Detection</button>
+            </div>
+        </div>
+
+        <!-- Spinner -->
+        <div class="spinner" id="spinner">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <p>Running object detection...</p>
+        </div>
+
+        <!-- Error -->
+        <div class="error-msg" id="errorMsg"></div>
+
+        <!-- Result -->
+        <div class="result-section" id="resultSection">
+            <h2>Detection Result</h2>
+            <div class="result-card">
+                <div class="image-wrap">
+                    <img id="resultImg" alt="Detection result">
+                </div>
+                <div class="result-footer">
+                    <a class="download-btn" id="downloadBtn" download="detection_result.jpg">Download Result</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone    = document.getElementById('dropZone');
+        const fileInput   = document.getElementById('fileInput');
+        const previewSec  = document.getElementById('previewSection');
+        const previewImg  = document.getElementById('previewImg');
+        const fileName    = document.getElementById('fileName');
+        const fileSize    = document.getElementById('fileSize');
+        const removeBtn   = document.getElementById('removeBtn');
+        const detectBtn   = document.getElementById('detectBtn');
+        const spinner     = document.getElementById('spinner');
+        const errorMsg    = document.getElementById('errorMsg');
+        const resultSec   = document.getElementById('resultSection');
+        const resultImg   = document.getElementById('resultImg');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let selectedFile = null;
+
+        // --- Drag & Drop ---
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) { showError('Please select an image file.'); return; }
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatBytes(file.size);
+
+            const reader = new FileReader();
+            reader.onload = e => { previewImg.src = e.target.result; };
+            reader.readAsDataURL(file);
+
+            dropZone.style.display = 'none';
+            previewSec.classList.add('visible');
+            resultSec.classList.remove('visible');
+            hideError();
+        }
+
+        removeBtn.addEventListener('click', reset);
+
+        function reset() {
+            selectedFile = null;
+            fileInput.value = '';
+            previewSec.classList.remove('visible');
+            resultSec.classList.remove('visible');
+            dropZone.style.display = '';
+            hideError();
+        }
+
+        // --- Detect ---
+        detectBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            detectBtn.disabled = true;
+            spinner.classList.add('visible');
+            resultSec.classList.remove('visible');
+            hideError();
+
+            const formData = new FormData();
+            formData.append('image_file', selectedFile);
+
+            try {
+                const resp = await fetch('/predict_image', { method: 'POST', body: formData });
+                if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                resultImg.src = url;
+                downloadBtn.href = url;
+                resultSec.classList.add('visible');
+            } catch (err) {
+                showError('Detection failed: ' + err.message);
+            } finally {
+                detectBtn.disabled = false;
+                spinner.classList.remove('visible');
+            }
+        });
+
+        // --- Helpers ---
+        function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.add('visible'); }
+        function hideError() { errorMsg.classList.remove('visible'); }
+        function formatBytes(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
+        }
+    </script>
+</body>
+</html>
