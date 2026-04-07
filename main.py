@@ -56,7 +56,7 @@ model.eval()
 print("Model loaded successfully.")
 
 # --- API SETUP ---
-app = FastAPI(title="Saransh's Advanced Vision API", root_path="/default")
+app = FastAPI(title="Saransh's Runway Detection API", root_path="/default")
 
 @app.get("/")
 async def serve_ui():

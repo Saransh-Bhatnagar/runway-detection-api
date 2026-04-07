@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vision API - Object Detection</title>
+    <title>Runway Detection API</title>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -261,8 +261,8 @@
 </head>
 <body>
     <header>
-        <h1>Vision API</h1>
-        <p>Upload an image to detect objects using Faster R-CNN</p>
+        <h1>Runway Detection</h1>
+        <p>Upload an aerial image to detect runways using Faster R-CNN</p>
     </header>
 
     <div class="container">
@@ -270,7 +270,7 @@
         <div class="drop-zone" id="dropZone">
             <input type="file" id="fileInput" accept="image/*">
             <div class="icon">&#128444;</div>
-            <div class="label">Drag & drop an image or <strong>browse</strong></div>
+            <div class="label">Drag & drop an aerial image or <strong>browse</strong></div>
             <div class="hint">JPG, PNG, WEBP supported</div>
         </div>
 
@@ -290,14 +290,14 @@
             </div>
 
             <div class="actions">
-                <button class="detect-btn" id="detectBtn">Run Detection</button>
+                <button class="detect-btn" id="detectBtn">Detect Runways</button>
             </div>
         </div>
 
         <!-- Spinner -->
         <div class="spinner" id="spinner">
             <div class="dots"><span></span><span></span><span></span></div>
-            <p>Running object detection...</p>
+            <p>Detecting runways...</p>
         </div>
 
         <!-- Error -->
@@ -305,13 +305,13 @@
 
         <!-- Result -->
         <div class="result-section" id="resultSection">
-            <h2>Detection Result</h2>
+            <h2>Detected Runways</h2>
             <div class="result-card">
                 <div class="image-wrap">
-                    <img id="resultImg" alt="Detection result">
+                    <img id="resultImg" alt="Runway detection result">
                 </div>
                 <div class="result-footer">
-                    <a class="download-btn" id="downloadBtn" download="detection_result.jpg">Download Result</a>
+                    <a class="download-btn" id="downloadBtn" download="runway_detection.jpg">Download Result</a>
                 </div>
             </div>
         </div>
@@ -391,7 +391,7 @@
                 downloadBtn.href = url;
                 resultSec.classList.add('visible');
             } catch (err) {
-                showError('Detection failed: ' + err.message);
+                showError('Runway detection failed: ' + err.message);
             } finally {
                 detectBtn.disabled = false;
                 spinner.classList.remove('visible');
