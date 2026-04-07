@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # 1. Install the AWS Lambda Web Adapter (The "Magic" Link)
 # This allows standard FastAPI apps to run on Serverless Lambda

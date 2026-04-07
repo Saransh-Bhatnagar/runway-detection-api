@@ -1,9 +1,9 @@
-fastapi
-uvicorn[standard]
-python-multipart
-Pillow
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+Pillow==10.4.0
 numpy<2
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch==2.1.0+cpu
 torchvision==0.16.0+cpu
-boto3
+boto3==1.35.50
