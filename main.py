@@ -1,6 +1,7 @@
 import io
 import os
 import logging
+from contextlib import asynccontextmanager
 
 import torch
 from torchvision import transforms
@@ -12,6 +13,7 @@ from PIL import Image, ImageDraw, UnidentifiedImageError
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
@@ -25,11 +27,19 @@ BUCKET_NAME      = os.environ.get("S3_BUCKET", "runway-model-storage")
 MODEL_KEY        = os.environ.get("MODEL_KEY", "checkpoint_epoch_10.pth")
 LOCAL_MODEL_PATH = os.environ.get("MODEL_PATH", "/tmp/checkpoint_epoch_10.pth")
 CONF_THRESHOLD   = float(os.environ.get("CONF_THRESHOLD", "0.8"))
+CORS_ORIGINS     = os.environ.get("CORS_ORIGINS", "*").split(",")
 MODEL_INPUT_SIZE = 1024
 NUM_CLASSES      = 2
 
-BASE_DIR    = os.path.dirname(__file__)
-STATIC_DIR  = os.path.join(BASE_DIR, "static")
+BASE_DIR   = os.path.dirname(__file__)
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+# Stateless transform — instantiate once
+image_transform = transforms.ToTensor()
+
+# Module-level holders, populated in the lifespan handler
+state: dict = {"model": None}
+
 
 # --- MODEL SETUP ---
 def build_model() -> torch.nn.Module:
@@ -55,20 +65,43 @@ def load_checkpoint() -> dict:
     else:
         logger.info("Model found locally (warm start). Skipping download.")
 
-    return torch.load(LOCAL_MODEL_PATH, map_location=torch.device("cpu"))
+    # weights_only=True is the secure default (avoids arbitrary code exec from pickled files).
+    # Falls back to the legacy loader if the checkpoint format isn't compatible.
+    try:
+        return torch.load(LOCAL_MODEL_PATH, map_location="cpu", weights_only=True)
+    except Exception as e:
+        logger.warning("weights_only=True load failed (%s) — retrying with weights_only=False", e)
+        return torch.load(LOCAL_MODEL_PATH, map_location="cpu", weights_only=False)
 
 
-model = build_model()
-checkpoint = load_checkpoint()
-model.load_state_dict(checkpoint["model_state_dict"])
-model.eval()
-logger.info("Model loaded successfully.")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting up — building model and loading weights")
+    model = build_model()
+    checkpoint = load_checkpoint()
+    model.load_state_dict(checkpoint["model_state_dict"])
+    model.eval()
+    state["model"] = model
+    logger.info("Model loaded successfully.")
+    yield
+    logger.info("Shutting down")
+    state.clear()
 
-# Stateless transform — instantiate once
-image_transform = transforms.ToTensor()
 
 # --- API ---
-app = FastAPI(title="Saransh's Runway Detection API", root_path="/default")
+app = FastAPI(
+    title="Saransh's Runway Detection API",
+    root_path="/default",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
@@ -78,7 +111,7 @@ async def serve_ui():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "model_loaded": state.get("model") is not None}
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -86,6 +119,10 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.post("/predict_image")
 async def predict_image(image_file: UploadFile = File(...)):
+    model = state.get("model")
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+
     contents = await image_file.read()
 
     try:
