@@ -383,7 +383,7 @@
             formData.append('image_file', selectedFile);
 
             try {
-                const resp = await fetch('/predict_image', { method: 'POST', body: formData });
+                const resp = await fetch('predict_image', { method: 'POST', body: formData });
                 if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
                 const blob = await resp.blob();
                 const url = URL.createObjectURL(blob);
