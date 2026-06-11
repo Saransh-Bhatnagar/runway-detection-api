@@ -4,6 +4,12 @@ FROM python:3.11-slim
 # This allows standard FastAPI apps to run on Serverless Lambda
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.7.0 /lambda-adapter /opt/extensions/lambda-adapter
 
+# Our startup (S3 model download + torch.load) takes longer than Lambda's 10s
+# INIT phase. Async init lets the adapter signal readiness before the deadline
+# and keep the SAME app process running into the invoke phase, so the in-flight
+# download finishes instead of the process being killed and re-downloading.
+ENV AWS_LWA_ASYNC_INIT=true
+
 # 2. Set working directory
 WORKDIR /app
 

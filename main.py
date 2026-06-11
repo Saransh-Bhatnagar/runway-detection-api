@@ -7,7 +7,6 @@ import torch
 from torchvision import transforms
 from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.models.resnet import ResNet50_Weights
 from PIL import Image, ImageDraw, UnidentifiedImageError
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -25,6 +24,8 @@ logger = logging.getLogger(__name__)
 # --- CONFIG ---
 BUCKET_NAME      = os.environ.get("S3_BUCKET", "runway-model-storage")
 MODEL_KEY        = os.environ.get("MODEL_KEY", "checkpoint_epoch_10.pth")
+# /tmp is the only writable path in Lambda. The model is intentionally kept out
+# of the image (see .dockerignore) and fetched from S3 on cold start.
 LOCAL_MODEL_PATH = os.environ.get("MODEL_PATH", "/tmp/checkpoint_epoch_10.pth")
 CONF_THRESHOLD   = float(os.environ.get("CONF_THRESHOLD", "0.8"))
 CORS_ORIGINS     = os.environ.get("CORS_ORIGINS", "*").split(",")
@@ -43,9 +44,12 @@ state: dict = {"model": None}
 
 # --- MODEL SETUP ---
 def build_model() -> torch.nn.Module:
+    # weights_backbone=None: our checkpoint overwrites every weight via
+    # load_state_dict below, so fetching the pretrained backbone from the torch
+    # hub at startup is a pure waste (a network download we immediately discard).
     model = fasterrcnn_resnet50_fpn_v2(
         weights=None,
-        weights_backbone=ResNet50_Weights.DEFAULT,
+        weights_backbone=None,
         num_classes=NUM_CLASSES,
     )
     in_features = model.roi_heads.box_predictor.cls_score.in_features
